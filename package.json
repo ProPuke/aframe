@@ -42,7 +42,7 @@
     "style-attr": "^1.0.2",
     "three": "git+https://github.com/ProPuke/three.js.git#dev",
     "three-bmfont-text": "^2.1.0",
-    "webvr-polyfill": "^0.9.36"
+    "webvr-polyfill": "^0.9.37"
   },
   "devDependencies": {
     "browserify": "^13.1.0",
@@ -74,9 +74,9 @@
     "lolex": "^1.5.1",
     "markserv": "0.0.20",
     "minifyify": "^7.3.3",
-    "mocha": "^3.0.2",
+    "mocha": "^3.5.3",
     "mozilla-download": "^1.1.1",
-    "replace-in-file": "^2.5.3",
+    "replace-in-file": "^2.6.4",
     "semistandard": "^9.0.0",
     "shelljs": "^0.7.7",
     "shx": "^0.2.2",
