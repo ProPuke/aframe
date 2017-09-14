@@ -31,7 +31,7 @@ var warn = utils.debug('core:a-scene:warn');
  * @member {object} object3D - Root three.js Scene object.
  * @member {object} renderer
  * @member {bool} renderStarted
- * @member (object) effect - three.js VREffect
+ * @member {object} effect - three.js VREffect
  * @member {object} systems - Registered instantiated systems.
  * @member {number} time
  */
@@ -119,6 +119,8 @@ module.exports.AScene = registerElement('a-scene', {
         this.enterVRBound = function () { self.enterVR(); };
         this.exitVRBound = function () { self.exitVR(); };
         this.exitVRTrueBound = function () { self.exitVR(true); };
+        this.pointerRestrictedBound = function () { self.pointerRestricted(); };
+        this.pointerUnrestrictedBound = function () { self.pointerUnrestricted(); };
 
         // Enter VR on `vrdisplayactivate` (e.g. putting on Rift headset).
         window.addEventListener('vrdisplayactivate', this.enterVRBound);
@@ -126,11 +128,16 @@ module.exports.AScene = registerElement('a-scene', {
         // Exit VR on `vrdisplaydeactivate` (e.g. taking off Rift headset).
         window.addEventListener('vrdisplaydeactivate', this.exitVRBound);
 
-        // Enter VR on `vrdisplayconnect` (e.g. plugging on Rift headset).
-        window.addEventListener('vrdisplayconnect', this.enterVRBound);
-
         // Exit VR on `vrdisplaydisconnect` (e.g. unplugging Rift headset).
         window.addEventListener('vrdisplaydisconnect', this.exitVRTrueBound);
+
+        // Register for mouse restricted events while in VR
+        // (e.g. mouse no longer available on desktop 2D view)
+        window.addEventListener('vrdisplaypointerrestricted', this.pointerRestrictedBound);
+
+        // Register for mouse unrestricted events while in VR
+        // (e.g. mouse once again available on desktop 2D view)
+        window.addEventListener('vrdisplaypointerunrestricted', this.pointerUnrestrictedBound);
       },
       writable: window.debug
     },
@@ -178,6 +185,8 @@ module.exports.AScene = registerElement('a-scene', {
         window.removeEventListener('vrdisplaydeactivate', this.exitVRBound);
         window.removeEventListener('vrdisplayconnect', this.enterVRBound);
         window.removeEventListener('vrdisplaydisconnect', this.exitVRTrueBound);
+        window.removeEventListener('vrdisplaypointerrestricted', this.pointerRestrictedBound);
+        window.removeEventListener('vrdisplaypointerunrestricted', this.pointerUnrestrictedBound);
       }
     },
 
@@ -200,6 +209,16 @@ module.exports.AScene = registerElement('a-scene', {
           }
         });
       }
+    },
+
+    /**
+     * For tests.
+     */
+    getPointerLockElement: {
+      value: function () {
+        return document.pointerLockElement;
+      },
+      writable: window.debug
     },
 
     /**
@@ -317,6 +336,31 @@ module.exports.AScene = registerElement('a-scene', {
       writable: window.debug
     },
 
+    pointerRestricted: {
+      value: function () {
+        if (this.canvas) {
+          var pointerLockElement = this.getPointerLockElement();
+          if (pointerLockElement && pointerLockElement !== this.canvas && document.exitPointerLock) {
+            // Recreate pointer lock on the canvas, if taken on another element.
+            document.exitPointerLock();
+          }
+
+          if (this.canvas.requestPointerLock) {
+            this.canvas.requestPointerLock();
+          }
+        }
+      }
+    },
+
+    pointerUnrestricted: {
+      value: function () {
+        var pointerLockElement = this.getPointerLockElement();
+        if (pointerLockElement && pointerLockElement === this.canvas && document.exitPointerLock) {
+          document.exitPointerLock();
+        }
+      }
+    },
+
     /**
      * Handle `vrdisplaypresentchange` event for exiting VR through other means than
      * `<ESC>` key. For example, GearVR back button on Oculus Browser.
@@ -412,12 +456,11 @@ module.exports.AScene = registerElement('a-scene', {
         var canvas = this.canvas;
         var embedded = this.getAttribute('embedded') && !this.is('vr-mode');
         var size;
-        // Possible camera or canvas not injected yet.
-        // ON MOBILE the webvr-polyfill relies on the fullscreen API to enter
-        // VR mode. The canvas is resized by VREffect following the values returned
-        // by getEyeParameters. We don't want to overwrite the size with the
-        // windows width and height.
-        if (!camera || !canvas || this.is('vr-mode') && isMobile) { return; }
+        // Do not update renderer, if a camera or a canvas have not been injected.
+        // In VR mode, VREffect handles canvas resize based on the dimensions returned by
+        // the getEyeParameters function of the WebVR API. These dimensions are independent of
+        // the window size, therefore should not be overwritten with the window's width and height.
+        if (!camera || !canvas || this.is('vr-mode')) { return; }
         // Update camera.
         size = getCanvasSize(canvas, embedded);
         camera.aspect = size.width / size.height;
@@ -437,11 +480,6 @@ module.exports.AScene = registerElement('a-scene', {
           antialias: shouldAntiAlias(this),
           alpha: true
         });
-        // r86 shipped with a bug fixed in https://github.com/mrdoob/three.js/pull/11970
-        // We need to setup a dummy VRDevice to avoid a TypeError
-        // when vrdisplaypresentchange fires.
-        // This line can be removed after updating to THREE r87.
-        renderer.vr.setDevice({});
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.sortObjects = false;
         this.effect = new THREE.VREffect(renderer);

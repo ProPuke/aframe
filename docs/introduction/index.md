@@ -21,9 +21,9 @@ examples:
 [glitch]: http://glitch.com/~aframe
 
 A-Frame can be developed from a plain HTML file without having to install
-anything! A great way to try out A-Frame is to **[remix the starter example on
+anything. A great way to try out A-Frame is to **[remix the starter example on
 Glitch][glitch]**, an online code editor that instantly hosts and deploys for
-free. Or create an `.html` file and include A-Frame in the `<head>`:
+free. Alternatively, create an `.html` file and include A-Frame in the `<head>`:
 
 ```html
 <html>
@@ -71,8 +71,7 @@ A-Frame supports most VR headsets such as Vive, Rift, Daydream, GearVR,
 Cardboard, and can even be used for augmented reality. Although A-Frame
 supports the whole spectrum, A-Frame aims to define fully immersive
 interactive VR experiences that go beyond basic 360&deg; content, making
-full use of positional tracking and controllers. The Mozilla VR team is
-currently using A-Frame as the foundation for a Metaverse-in-progress.
+full use of positional tracking and controllers.
 
 <div class="docs-introduction-examples">
   <a href="https://aframe.io/a-painter/?url=https://ucarecdn.com/962b242b-87a9-422c-b730-febdc470f203/">

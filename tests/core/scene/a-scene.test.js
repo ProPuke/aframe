@@ -61,21 +61,6 @@ suite('a-scene (without renderer)', function () {
     });
   });
 
-  suite('vrdisplayconnect', function () {
-    test('tells A-Frame about entering VR when the headset is connected', function (done) {
-      var event;
-      var sceneEl = this.el;
-      var enterVRStub = this.sinon.stub(sceneEl, 'enterVR');
-      sceneEl.effect = {requestPresent: function () { return Promise.resolve(); }};
-      event = new CustomEvent('vrdisplayconnect');
-      window.dispatchEvent(event);
-      process.nextTick(function () {
-        assert.ok(enterVRStub.called);
-        done();
-      });
-    });
-  });
-
   suite('vrdisplaydisconnect', function () {
     test('tells A-Frame about entering VR when the headset is disconnected', function (done) {
       var event;
@@ -400,6 +385,96 @@ suite('a-scene (without renderer)', function () {
       sceneEl.reload(true);
       sinon.assert.called(AEntity.prototype.pause);
       sinon.assert.called(ANode.prototype.load);
+    });
+  });
+
+  suite('pointerRestricted', function () {
+    setup(function () {
+      var sceneEl = this.el;
+
+      // Stub canvas.
+      sceneEl.canvas = document.createElement('canvas');
+    });
+
+    test('requests pointerlock when restricted', function (done) {
+      var sceneEl = this.el;
+      var event;
+      var requestPointerLockSpy;
+
+      requestPointerLockSpy = this.sinon.spy(sceneEl.canvas, 'requestPointerLock');
+      event = new CustomEvent('vrdisplaypointerrestricted');
+      window.dispatchEvent(event);
+
+      process.nextTick(function () {
+        assert.ok(requestPointerLockSpy.called);
+        done();
+      });
+    });
+
+    test('exits pointerlock when unrestricted', function (done) {
+      var sceneEl = this.el;
+      var event;
+      var exitPointerLockSpy;
+
+      exitPointerLockSpy = this.sinon.spy(document, 'exitPointerLock');
+
+      event = new CustomEvent('vrdisplaypointerunrestricted');
+
+      this.sinon.stub(sceneEl, 'getPointerLockElement', function () {
+        return sceneEl.canvas;
+      });
+      window.dispatchEvent(event);
+
+      process.nextTick(function () {
+        assert.ok(exitPointerLockSpy.called);
+        done();
+      });
+    });
+
+    test('does not exit pointerlock when unrestricted on different locked element', function (done) {
+      var sceneEl = this.el;
+      var event;
+      var exitPointerLockSpy;
+
+      exitPointerLockSpy = this.sinon.spy(document, 'exitPointerLock');
+
+      event = new CustomEvent('vrdisplaypointerunrestricted');
+
+      this.sinon.stub(sceneEl, 'getPointerLockElement', function () {
+        // Mock that pointerlock is taken by the page itself,
+        // independently of the a-scene handler for vrdisplaypointerrestricted event
+        return document.createElement('canvas');
+      });
+      window.dispatchEvent(event);
+
+      process.nextTick(function () {
+        assert.notOk(exitPointerLockSpy.called);
+        done();
+      });
+    });
+
+    test('update existing pointerlock target when restricted', function (done) {
+      var sceneEl = this.el;
+      var event;
+      var exitPointerLockSpy;
+      var requestPointerLockSpy;
+
+      exitPointerLockSpy = this.sinon.spy(document, 'exitPointerLock');
+      requestPointerLockSpy = this.sinon.spy(sceneEl.canvas, 'requestPointerLock');
+      event = new CustomEvent('vrdisplaypointerrestricted');
+
+      this.sinon.stub(sceneEl, 'getPointerLockElement', function () {
+        // Mock that pointerlock is taken by the page itself,
+        // independently of the a-scene handler for vrdisplaypointerrestricted event
+        return document.createElement('canvas');
+      });
+      window.dispatchEvent(event);
+
+      process.nextTick(function () {
+        assert.ok(exitPointerLockSpy.called);
+        assert.ok(requestPointerLockSpy.called);
+        done();
+      });
     });
   });
 
