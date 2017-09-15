@@ -50,22 +50,23 @@ Shader.prototype = {
    * Called during shader initialization and is only run once.
    */
   init: function (data) {
+    var self = this;
+    var append;
+
     this.attributes = this.initVariables(data, 'attribute');
     this.uniforms = THREE.UniformsUtils.merge([ this.initVariables(data, 'uniform'), this.uniforms || {} ]);
-
-    var append;
 
     if (this.lights) {
       append = THREE.UniformsLib['lights'];
       Object.keys(append).forEach(function (key) {
-        this.uniforms[key] = append[key];
+        self.uniforms[key] = append[key];
       });
     }
 
     if (this.fog) {
       append = THREE.UniformsLib['fog'];
       Object.keys(append).forEach(function (key) {
-        this.uniforms[key] = append[key];
+        self.uniforms[key] = append[key];
       });
     }
 
