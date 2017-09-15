@@ -51,9 +51,28 @@ Shader.prototype = {
    */
   init: function (data) {
     this.attributes = this.initVariables(data, 'attribute');
-    this.uniforms = this.initVariables(data, 'uniform');
+    this.uniforms = THREE.UniformsUtils.merge([ this.initVariables(data, 'uniform'), this.uniforms || {} ]);
+
+    var append;
+
+    if (this.lights) {
+      append = THREE.UniformsLib['lights'];
+      Object.keys(append).forEach(function (key) {
+        this.uniforms[key] = append[key];
+      });
+    }
+
+    if (this.fog) {
+      append = THREE.UniformsLib['fog'];
+      Object.keys(append).forEach(function (key) {
+        this.uniforms[key] = append[key];
+      });
+    }
+
     this.material = new (this.raw ? THREE.RawShaderMaterial : THREE.ShaderMaterial)({
       // attributes: this.attributes,
+      fog: this.fog,
+      lights: this.lights,
       uniforms: this.uniforms,
       vertexShader: this.vertexShader,
       fragmentShader: this.fragmentShader
