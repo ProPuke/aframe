@@ -71,8 +71,8 @@ Shader.prototype = {
 
     this.material = new (this.raw ? THREE.RawShaderMaterial : THREE.ShaderMaterial)({
       // attributes: this.attributes,
-      fog: this.fog,
-      lights: this.lights,
+      fog: this.fog || false,
+      lights: this.lights || false,
       uniforms: this.uniforms,
       vertexShader: this.vertexShader,
       fragmentShader: this.fragmentShader
