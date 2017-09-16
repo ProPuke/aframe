@@ -28338,7 +28338,7 @@ function rebuildAttribute (attrib, data, itemSize) {
 					}
 				}
 				var portalCamera = portalCameras[camera.type][_this.currentPortalDepth];
-				portalCamera.copy(camera);
+				portalCamera.copy(camera, false);
 
 				// ..then place the portal camera over the target and reverse it by this transform..
 				portalCamera.matrix.multiplyMatrices( targetMatrix, cameraToPortal );
@@ -78987,7 +78987,7 @@ _dereq_('./core/a-mixin');
 _dereq_('./extras/components/');
 _dereq_('./extras/primitives/');
 
-console.log('A-Frame Version: 0.6.1 (Date 16-09-2017, Commit #625d398)');
+console.log('A-Frame Version: 0.6.1 (Date 16-09-2017, Commit #5b9213f)');
 console.log('three Version:', pkg.dependencies['three']);
 console.log('WebVR Polyfill Version:', pkg.dependencies['webvr-polyfill']);
 
