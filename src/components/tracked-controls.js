@@ -42,7 +42,7 @@ module.exports.Component = registerComponent('tracked-controls', {
     this.controllerPosition = new THREE.Vector3();
     this.controllerQuaternion = new THREE.Quaternion();
     this.deltaControllerPosition = new THREE.Vector3();
-    this.position = {};
+    this.position = new THREE.Vector3();
     this.rotation = {};
     this.standingMatrix = new THREE.Matrix4();
 
@@ -86,8 +86,7 @@ module.exports.Component = registerComponent('tracked-controls', {
       data.controller
     );
 
-    // Only replace the stored controller if we find a new one.
-    this.controller = controller || this.controller;
+    this.controller = controller;
   },
 
   applyArmModel: function (controllerPosition) {
@@ -149,15 +148,14 @@ module.exports.Component = registerComponent('tracked-controls', {
     var controller = this.controller;
     var controllerEuler = this.controllerEuler;
     var controllerPosition = this.controllerPosition;
-    var currentPosition;
-    var deltaControllerPosition = this.deltaControllerPosition;
+    var elPosition;
+    var previousControllerPosition = this.previousControllerPosition;
     var dolly = this.dolly;
     var el = this.el;
     var pose;
     var standingMatrix = this.standingMatrix;
     var vrDisplay = this.system.vrDisplay;
     var headEl = this.getHeadElement();
-    var headObject3D = headEl.object3D;
     var headCamera = headEl.components.camera;
     var userHeight = (headCamera ? headCamera.data.userHeight : 0) || this.defaultUserHeight();
 
@@ -165,53 +163,48 @@ module.exports.Component = registerComponent('tracked-controls', {
 
     // Compose pose from Gamepad.
     pose = controller.pose;
-    // If no orientation, use camera.
-    if (pose.orientation) {
+    if (pose.orientation !== null) {
       dolly.quaternion.fromArray(pose.orientation);
-    } else {
-      dolly.quaternion.copy(headObject3D.quaternion);
     }
-    if (pose.position) {
+
+    // controller position or arm model
+    if (pose.position !== null) {
       dolly.position.fromArray(pose.position);
     } else {
-      if (this.data.armModel) {
-        // Controller not 6DOF, apply arm model.
-        this.applyArmModel(controllerPosition);
-      }
-      dolly.position.copy(controllerPosition);
+      // Controller not 6DOF, apply arm model.
+      if (this.data.armModel) { this.applyArmModel(dolly.position); }
     }
-    dolly.updateMatrix();
 
     // Apply transforms, if 6DOF and in VR.
-    if (pose.position && vrDisplay) {
+    if (pose.position != null && vrDisplay) {
       if (vrDisplay.stageParameters) {
         standingMatrix.fromArray(vrDisplay.stageParameters.sittingToStandingTransform);
-        dolly.applyMatrix(standingMatrix);
+        dolly.matrix.compose(dolly.position, dolly.quaternion, dolly.scale);
+        dolly.matrix.multiplyMatrices(standingMatrix, dolly.matrix);
       } else {
         // Apply default camera height
         dolly.position.y += userHeight;
-        dolly.updateMatrix();
+        dolly.matrix.compose(dolly.position, dolly.quaternion, dolly.scale);
       }
+    } else {
+      dolly.matrix.compose(dolly.position, dolly.quaternion, dolly.scale);
     }
 
     // Decompose.
     controllerEuler.setFromRotationMatrix(dolly.matrix);
     controllerPosition.setFromMatrixPosition(dolly.matrix);
 
-    // Apply rotation (as absolute, with rotation offset).
+    // Apply rotation.
     this.rotation.x = THREE.Math.radToDeg(controllerEuler.x);
     this.rotation.y = THREE.Math.radToDeg(controllerEuler.y);
     this.rotation.z = THREE.Math.radToDeg(controllerEuler.z) + this.data.rotationOffset;
     el.setAttribute('rotation', this.rotation);
 
-    // Apply position (as delta from previous Gamepad position).
-    deltaControllerPosition.copy(controllerPosition).sub(this.previousControllerPosition);
-    this.previousControllerPosition.copy(controllerPosition);
-    currentPosition = el.getAttribute('position');
-    this.position.x = currentPosition.x + deltaControllerPosition.x;
-    this.position.y = currentPosition.y + deltaControllerPosition.y;
-    this.position.z = currentPosition.z + deltaControllerPosition.z;
+    // Apply position.
+    elPosition = el.getAttribute('position');
+    this.position.copy(elPosition).sub(previousControllerPosition).add(controllerPosition);
     el.setAttribute('position', this.position);
+    previousControllerPosition.copy(controllerPosition);
   },
 
   /**

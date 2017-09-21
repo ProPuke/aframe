@@ -70,11 +70,14 @@ module.exports.Component = registerComponent('windows-motion-controls', {
 
   init: function () {
     var self = this;
+    var el = this.el;
     this.onButtonChanged = bind(this.onButtonChanged, this);
     this.onButtonDown = function (evt) { self.onButtonEvent(evt, 'down'); };
     this.onButtonUp = function (evt) { self.onButtonEvent(evt, 'up'); };
     this.onButtonTouchStart = function (evt) { self.onButtonEvent(evt, 'touchstart'); };
     this.onButtonTouchEnd = function (evt) { self.onButtonEvent(evt, 'touchend'); };
+    this.onControllerConnected = function () { self.setModelVisibility(true); };
+    this.onControllerDisconnected = function () { self.setModelVisibility(false); };
     this.controllerPresent = false;
     this.lastControllerCheck = 0;
     this.previousButtonValues = {};
@@ -96,6 +99,9 @@ module.exports.Component = registerComponent('windows-motion-controls', {
     // Stored on object to allow for mocking in tests
     this.emitIfAxesChanged = controllerUtils.emitIfAxesChanged;
     this.checkControllerPresentAndSetup = controllerUtils.checkControllerPresentAndSetup;
+
+    el.addEventListener('controllerconnected', this.onControllerConnected);
+    el.addEventListener('controllerdisconnected', this.onControllerDisconnected);
   },
 
   addEventListeners: function () {
@@ -129,26 +135,16 @@ module.exports.Component = registerComponent('windows-motion-controls', {
       hand: this.data.hand,
       index: this.data.pair
     });
-
-    if (this.data.hideDisconnected && this.controllerModel) {
-      this.controllerModel.visible = false;
-    }
   },
 
   play: function () {
     this.checkIfControllerPresent();
     this.addControllersUpdateListener();
-
-    window.addEventListener('gamepadconnected', this.checkIfControllerPresent, false);
-    window.addEventListener('gamepaddisconnected', this.checkIfControllerPresent, false);
   },
 
   pause: function () {
     this.removeEventListeners();
     this.removeControllersUpdateListener();
-
-    window.removeEventListener('gamepadconnected', this.checkIfControllerPresent, false);
-    window.removeEventListener('gamepaddisconnected', this.checkIfControllerPresent, false);
   },
 
   updateControllerModel: function () {
@@ -198,7 +194,8 @@ module.exports.Component = registerComponent('windows-motion-controls', {
     this.el.setAttribute('tracked-controls', {
       idPrefix: GAMEPAD_ID_PREFIX,
       controller: data.pair,
-      hand: data.hand
+      hand: data.hand,
+      armModel: false
     });
 
     this.updateControllerModel();
@@ -227,13 +224,6 @@ module.exports.Component = registerComponent('windows-motion-controls', {
   },
 
   loadModel: function (url) {
-    // Make model visible if there's already one loaded.
-    if (this.controllerModel) {
-      this.controllerModel.visible = true;
-      return;
-    }
-
-    debug('Loading asset from: ' + url);
     // The model is loaded by the gltf-model compoent when this attribute is initially set,
     // removed and re-loaded if the given url changes.
     this.el.setAttribute('gltf-model', 'url(' + url + ')');
@@ -320,6 +310,8 @@ module.exports.Component = registerComponent('windows-motion-controls', {
       }
 
       this.calculateRayOriginFromMesh(rootNode);
+      // Determine if the model has to be visible or not.
+      this.setModelVisibility();
     }
 
     debug('Model load complete.');
@@ -452,5 +444,13 @@ module.exports.Component = registerComponent('windows-motion-controls', {
     }
 
     this.emitIfAxesChanged(this, this.mapping.axes, evt);
+  },
+
+  setModelVisibility: function (visible) {
+    var model = this.el.getObject3D('mesh');
+    visible = visible !== undefined ? visible : this.modelVisible;
+    this.modelVisible = visible;
+    if (!model) { return; }
+    model.visible = visible;
   }
 });
